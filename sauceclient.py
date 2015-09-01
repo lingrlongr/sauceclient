@@ -21,19 +21,14 @@ import base64
 import sys
 import json
 
+import requests
+
 __version__ = '0.2.1'
 
 is_py2 = sys.version_info.major is 2
 
-if is_py2:
-    import httplib as http_client
-else:
-    import http.client as http_client
-
 
 def json_loads(json_data):
-    if not is_py2:
-        json_data = json_data.decode(encoding='UTF-8')
     return json.loads(json_data)
 
 
@@ -48,22 +43,32 @@ class SauceClient(object):
         self.usage = Usage(self)
 
     def make_headers(self):
-        base64string = self.get_encoded_auth_string()
+        #base64string = self.get_encoded_auth_string()
         headers = {
-            'Authorization': 'Basic %s' % base64string,
+            #'Authorization': 'Basic %s' % base64string,
             'Content-Type': 'application/json',
         }
         return headers
 
     def request(self, method, url, body=None):
-        connection = http_client.HTTPSConnection('saucelabs.com')
-        connection.request(method, url, body, headers=self.headers)
-        response = connection.getresponse()
-        json_data = response.read()
-        connection.close()
-        if response.status != 200:
-            raise Exception('%s: %s.\nSauce Status NOT OK' %
-                            (response.status, response.reason))
+        #connection = http_client.HTTPSConnection('saucelabs.com')
+        #connection.request(method, url, body, headers=self.headers)
+        #response = connection.getresponse()
+        method_func = getattr(requests, method.lower())
+        url = 'http://saucelabs.com{}'.format(url)
+        auth = (self.sauce_username, self.sauce_access_key)
+        response = method_func(url,
+                               data=body,
+                               auth=auth,
+                               headers=self.headers)
+        response.raise_for_status()
+        #json_data = response.json()
+        #json_data = response.read()
+        return response.content
+        #connection.close()
+        #if response.status != 200:
+        #    raise Exception('%s: %s.\nSauce Status NOT OK' %
+        #                    (response.status, response.reason))
         return json_data
 
     def get_encoded_auth_string(self):
